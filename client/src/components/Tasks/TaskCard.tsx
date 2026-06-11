@@ -46,12 +46,12 @@ export default function TaskCard({ task, onClick, onDragStart }: TaskCardProps) 
           <span className={`priority-badge priority-${task.priority}`}>
             {task.priority}
           </span>
-          {task.tags.length > 0 && (
+          {(task.tags || []).length > 0 && (
             <div className="task-card-tags">
-              {task.tags.slice(0, 2).map((t) => (
+              {(task.tags || []).slice(0, 2).map((t) => (
                 <span className="task-tag" key={t}>{t}</span>
               ))}
-              {task.tags.length > 2 && <span className="task-tag">+{task.tags.length - 2}</span>}
+              {(task.tags || []).length > 2 && <span className="task-tag">+{(task.tags || []).length - 2}</span>}
             </div>
           )}
         </div>

@@ -12,31 +12,35 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
     if (!name || !email || !password || !confirm) {
       setError('Please fill in all fields');
       return;
     }
+    
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
     }
+
     if (password !== confirm) {
       setError('Passwords do not match');
       return;
     }
+
     setLoading(true);
-    setTimeout(() => {
-      const result = register(name, email, password);
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.error || 'Registration failed');
-      }
-      setLoading(false);
-    }, 500);
+    
+    const result = await register(name, email, password);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.error || 'Registration failed');
+    }
+    
+    setLoading(false);
   };
 
   return (

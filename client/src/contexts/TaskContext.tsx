@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { Task, TaskStatus, TaskPriority } from '../types';
-import { getTasks, getAllTasks, saveTasks, generateId } from '../utils/storage';
 import { useAuth } from './AuthContext';
 
 interface TaskStats {
@@ -15,63 +14,110 @@ interface TaskStats {
 interface TaskContextType {
   tasks: Task[];
   stats: TaskStats;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  moveTask: (id: string, newStatus: TaskStatus) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  moveTask: (id: string, newStatus: TaskStatus) => Promise<void>;
   getFilteredTasks: (status?: TaskStatus, priority?: TaskPriority, search?: string) => Task[];
 }
 
 const TaskContext = createContext<TaskContextType | null>(null);
+const API_URL = 'http://localhost:5000/api';
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      setTasks(getTasks(user.id));
-    } else {
+  const fetchTasks = useCallback(async () => {
+    if (!user) {
       setTasks([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('taskflow_token');
+      const res = await fetch(`${API_URL}/tasks`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTasks(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tasks', err);
     }
   }, [user]);
 
-  const persist = useCallback((updated: Task[]) => {
-    // Merge with other users' tasks
-    const all = getAllTasks();
-    const otherTasks = all.filter((t) => t.userId !== user?.id);
-    saveTasks([...otherTasks, ...updated]);
-    setTasks(updated);
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  const addTask = useCallback(async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem('taskflow_token');
+      const res = await fetch(`${API_URL}/tasks`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify(task)
+      });
+      if (res.ok) {
+        const newTask = await res.json();
+        setTasks(prev => [...prev, newTask]);
+      }
+    } catch (err) {
+      console.error('Failed to add task', err);
+    }
   }, [user]);
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
-    if (!user) return;
-    const now = new Date().toISOString();
-    const newTask: Task = {
-      ...task,
-      id: generateId(),
-      createdAt: now,
-      updatedAt: now,
-      userId: user.id,
-    };
-    const updated = [...tasks, newTask];
-    persist(updated);
-  }, [user, tasks, persist]);
+  const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    // Optimistic update for UI snap
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    
+    try {
+      const token = localStorage.getItem('taskflow_token');
+      const res = await fetch(`${API_URL}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) {
+        // Rollback on failure could be implemented here, 
+        // for now we just refetch to ensure sync
+        fetchTasks();
+      }
+    } catch (err) {
+      console.error('Failed to update task', err);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    const updated = tasks.map((t) =>
-      t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
-    );
-    persist(updated);
-  }, [tasks, persist]);
+  const deleteTask = useCallback(async (id: string) => {
+    // Optimistic update
+    setTasks(prev => prev.filter(t => t.id !== id));
+    
+    try {
+      const token = localStorage.getItem('taskflow_token');
+      const res = await fetch(`${API_URL}/tasks/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        fetchTasks();
+      }
+    } catch (err) {
+      console.error('Failed to delete task', err);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
 
-  const deleteTask = useCallback((id: string) => {
-    const updated = tasks.filter((t) => t.id !== id);
-    persist(updated);
-  }, [tasks, persist]);
-
-  const moveTask = useCallback((id: string, newStatus: TaskStatus) => {
-    updateTask(id, { status: newStatus });
+  const moveTask = useCallback(async (id: string, newStatus: TaskStatus) => {
+    await updateTask(id, { status: newStatus });
   }, [updateTask]);
 
   const getFilteredTasks = useCallback((status?: TaskStatus, priority?: TaskPriority, search?: string) => {

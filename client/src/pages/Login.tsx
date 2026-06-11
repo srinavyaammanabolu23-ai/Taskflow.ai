@@ -10,7 +10,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!email || !password) {
@@ -18,15 +18,15 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const result = login(email, password);
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.error || 'Login failed');
-      }
-      setLoading(false);
-    }, 500);
+    
+    const result = await login(email, password);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.error || 'Login failed');
+    }
+    
+    setLoading(false);
   };
 
   return (

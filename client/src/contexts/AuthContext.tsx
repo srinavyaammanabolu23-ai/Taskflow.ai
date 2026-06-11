@@ -1,59 +1,82 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from '../types';
-import {
-  getUsers, saveUsers, findUserByEmail,
-  getCurrentUser, setCurrentUser, clearCurrentUser,
-  generateId, randomAvatarColor,
-} from '../utils/storage';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => { success: boolean; error?: string };
-  register: (name: string, email: string, password: string) => { success: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+const API_URL = 'http://localhost:5000/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const stored = getCurrentUser();
-    if (stored) setUser(stored);
+    const token = localStorage.getItem('taskflow_token');
+    if (token) {
+      // Verify token and get user
+      fetch(`${API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            setUser(data.user);
+          } else {
+            localStorage.removeItem('taskflow_token');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('taskflow_token');
+        });
+    }
   }, []);
 
-  const login = (email: string, password: string) => {
-    const found = findUserByEmail(email);
-    if (!found) return { success: false, error: 'No account found with that email' };
-    if (found.password !== password) return { success: false, error: 'Incorrect password' };
-    setUser(found);
-    setCurrentUser(found);
-    return { success: true };
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) return { success: false, error: data.error || 'Login failed' };
+      
+      localStorage.setItem('taskflow_token', data.token);
+      setUser(data.user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Network error. Is the server running?' };
+    }
   };
 
-  const register = (name: string, email: string, password: string) => {
-    if (findUserByEmail(email)) return { success: false, error: 'Email already registered' };
-    const newUser: User = {
-      id: generateId(),
-      name,
-      email,
-      password,
-      avatarColor: randomAvatarColor(),
-      createdAt: new Date().toISOString(),
-    };
-    const users = getUsers();
-    users.push(newUser);
-    saveUsers(users);
-    setUser(newUser);
-    setCurrentUser(newUser);
-    return { success: true };
+  const register = async (name: string, email: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) return { success: false, error: data.error || 'Registration failed' };
+      
+      localStorage.setItem('taskflow_token', data.token);
+      setUser(data.user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Network error. Is the server running?' };
+    }
   };
 
   const logout = () => {
     setUser(null);
-    clearCurrentUser();
+    localStorage.removeItem('taskflow_token');
   };
 
   return (
