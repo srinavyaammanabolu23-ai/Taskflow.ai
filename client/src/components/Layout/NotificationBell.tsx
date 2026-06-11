@@ -49,7 +49,7 @@ function generateNotifications(tasks: Task[]): Notification[] {
     }
 
     // Overdue tasks
-    if (dueDate && (dueDate.getTime() < today.getTime()) && task.status !== 'done') {
+    if (dueDate && (dueDate.getTime() < today.getTime())) {
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
       notifications.push({
         id: `overdue-${task.id}`,
