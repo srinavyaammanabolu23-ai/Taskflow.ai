@@ -49,7 +49,7 @@ function generateNotifications(tasks: Task[]): Notification[] {
     }
 
     // Overdue tasks
-    if (dueDate && dueDate < today && task.status !== 'done') {
+    if (dueDate && dueDate.getTime() < today.getTime() && task.status !== 'done') {
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
       notifications.push({
         id: `overdue-${task.id}`,
@@ -163,7 +163,7 @@ export default function NotificationBell({ tasks }: NotificationBellProps) {
     localStorage.setItem('taskflow_dismissed_notifs', JSON.stringify([...next]));
   };
 
-  const handleNotifClick = (notif: Notification) => {
+  const handleNotifClick = () => {
     setOpen(false);
     navigate('/board');
   };

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { ref, onValue, push, update, remove, set } from 'firebase/database';
+import { ref, onValue, push, update, remove, set, type DataSnapshot } from 'firebase/database';
 import { db } from '../firebase';
 import type { Task, TaskStatus, TaskPriority } from '../types';
 import { useAuth } from './AuthContext';
@@ -37,7 +37,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
     // Subscribe to tasks in Realtime Database under this user's node
     const tasksRef = ref(db, `tasks/${user.id}`);
-    const unsubscribe = onValue(tasksRef, (snapshot) => {
+    const unsubscribe = onValue(tasksRef, (snapshot: DataSnapshot) => {
       const data = snapshot.val();
       if (data) {
         const loadedTasks = Object.keys(data).map(key => ({
