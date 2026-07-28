@@ -54,26 +54,45 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [user]);
 
-  const addTask = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
-    if (!user) return;
-    try {
-      const now = new Date().toISOString();
-      const newTask = {
-        ...taskData,
-        tags: taskData.tags || [],
-        userId: user.id,
-        createdAt: now,
-        updatedAt: now,
-      };
-      
-      const tasksRef = ref(db, `tasks/${user.id}`);
-      const newTaskRef = push(tasksRef);
-      await set(newTaskRef, newTask);
-      
-    } catch (err) {
-      console.error('Failed to add task', err);
-    }
-  }, [user]);
+  const addTask = useCallback(async (taskData) => {
+
+  console.log("addTask called");
+
+  console.log(user);
+
+  try {
+
+    console.log("Writing to Firebase...");
+
+    const now = new Date().toISOString();
+
+    const newTask = {
+      ...taskData,
+      tags: taskData.tags || [],
+      userId: user?.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const tasksRef = ref(db, `tasks/${user?.id}`);
+
+    const newTaskRef = push(tasksRef);
+
+    console.log("Database path:", `tasks/${user?.id}`);
+
+    await set(newTaskRef, newTask);
+
+    console.log("SUCCESS");
+
+  } catch (err) {
+
+    console.error("FIREBASE ERROR");
+
+    console.error(err);
+
+  }
+
+}, [user]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
     if (!user) return;
