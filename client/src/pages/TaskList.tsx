@@ -49,15 +49,34 @@ export default function TaskList() {
     }
   };
 
-  const handleSave = (data: { title: string; description: string; status: TaskStatus; priority: TaskPriority; dueDate: string; tags: string[] }) => {
+  const handleSave = async (data: {
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string;
+  tags: string[];
+}) => {
+  console.log("handleSave called");
+  console.log(data);
+
+  try {
     if (editingTask) {
-      updateTask(editingTask.id, data);
+      console.log("Updating task...");
+      await updateTask(editingTask.id, data);
     } else {
-      addTask(data);
+      console.log("Adding task...");
+      await addTask(data);
     }
+
+    console.log("Task saved successfully");
+
     setModalOpen(false);
     setEditingTask(null);
-  };
+  } catch (err) {
+    console.error("Error inside handleSave:", err);
+  }
+};
 
   const handleDelete = () => {
     if (editingTask) {
