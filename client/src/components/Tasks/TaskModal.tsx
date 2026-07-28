@@ -19,11 +19,27 @@ export default function TaskModal({ task, initialStatus, onSave, onDelete, onClo
   const [tags, setTags] = useState<string[]>(task?.tags || []);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), status, priority, dueDate, tags });
-  };
+ const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  console.log("Submit clicked");
+
+  if (!title.trim()) {
+    console.log("Empty title");
+    return;
+  }
+
+  console.log("Calling onSave");
+
+  onSave({
+    title: title.trim(),
+    description: description.trim(),
+    status,
+    priority,
+    dueDate,
+    tags,
+  });
+};
 
   const addTag = () => {
     const tag = tagInput.trim();
