@@ -1,3 +1,6 @@
+console.log("=== addTask START ===");
+console.log("User:", user);
+
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { ref, onValue, push, update, remove, set, type DataSnapshot } from 'firebase/database';
 import { db } from '../firebase';
